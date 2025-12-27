@@ -16,6 +16,7 @@ repositories {
 dependencies {
     implementation("org.openjdk.jmh:jmh-core:1.37")
     kapt("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+    annotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
@@ -144,49 +145,39 @@ fun printRanking(jsonPath: String) {
         println("   Error details: ${e.message}\n")
     }
 }
+
 tasks.register<Exec>("jmhFast") {
     group = "benchmark"
-    description = "FAST smoke: every class, single param set, ~few minutes"
+    description = "Fast benchmark (short warmup, short measurement) + ranking + GC"
     dependsOn("shadowJar")
 
     val reportFile = "build/results-fast.json"
 
+    doFirst {
+        println("\n🏃 Running FAST benchmark...")
+        println("   JSON results: $reportFile\n")
+    }
+
     commandLine(
         "java", "--enable-preview", "-jar", "build/libs/benchmarks.jar",
-
-        // Minimum czasu na przypadek:
-        "-wi", "0",
-        "-i", "1",
-        "-f", "1",
-        "-w", "200ms",
-        "-r", "200ms",
-        "-bm", "avgt",
-        "-tu", "ms",
-
-        // bez GC prof na FAST (to spowalnia):
+        "-wi", "1", "-i", "2", "-f", "1", "-r", "1s", "-w", "1s",
+        "-tu", "s", "-bm", "avgt", "-prof", "gc",
         "-rf", "json", "-rff", reportFile,
-
-        // 1 wartość na każdy @Param (żeby nie mnożyć kombinacji):
-        "-p", "operationCount=10",
-        "-p", "scenario=Cpu",
-
-        // CompletableFutureBench:
-        "-p", "executionMode=Parallel",
-        "-p", "poolSize=4",
-
-        // ReactorBench:
-        "-p", "reactiveType=Flux",
-        "-p", "concurrency=4",
-
-        // KotlinCoroutinesBench:
-        "-p", "dispatcherType=DefaultDispatcher"
-        // (executionMode i concurrency już pokryte: executionMode=Parallel nie pasuje do Kotlin,
-        // więc lepiej dodać osobny parametr dla Kotlin – patrz uwaga niżej)
+        "-p", "operationCount=10,100"
     )
 
     isIgnoreExitValue = true
+    doLast {
+        val exit = executionResult.get().exitValue
+        if (exit != 0) {
+            println("\n⚠️ Benchmark finished with an error (exit code: $exit).")
+            println("   Try: ./gradlew jmhFast --info or run benchmarks with more verbose logging.\n")
+        } else {
+            println("\n✅ Benchmark finished successfully.\n")
+        }
+        printRanking(reportFile)
+    }
 }
-
 
 tasks.register<Exec>("jmhMedium") {
     group = "benchmark"

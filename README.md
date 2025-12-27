@@ -37,15 +37,15 @@ chcp 65001
 
 ### Run benchmarks
 
-FAST benchmark (~5 minutes):
+FAST benchmark (~50 minutes):
 ```
 ./gradlew jmhFast
 ```
-MEDIUM benchmark (~20 minutes):
+MEDIUM benchmark (~5 hours):
 ```
 ./gradlew jmhMedium
 ```
-HIGH benchmark (~60 minutes — full parameter space):
+HIGH benchmark (~10 hours — full parameter space):
 ```
 ./gradlew jmhHigh
 ```
